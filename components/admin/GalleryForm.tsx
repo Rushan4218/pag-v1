@@ -14,35 +14,31 @@ export default function GalleryForm({ onSubmit, onCancel }: GalleryFormProps) {
     imageUrl: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [uploadError, setUploadError] = useState<string>('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
+    setUploadError('')
+    setImageFile(file)
     const reader = new FileReader()
     reader.onload = (event) => {
       const preview = event.target?.result as string
       setImagePreview(preview)
     }
     reader.readAsDataURL(file)
-
-    const formDataObj = new FormData()
-    formDataObj.append('file', file)
-
-    try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formDataObj })
-      const data = await res.json()
-      setFormData((prev) => ({ ...prev, imageUrl: data.imageUrl }))
-    } catch (error) {
-      console.error('Upload failed:', error)
-    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const newErrors: Record<string, string> = {}
     
-    if (!formData.imageUrl) newErrors.imageUrl = 'Image is required'
+    if (!imageFile) {
+      setUploadError('Image is required')
+      return
+    }
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -51,10 +47,26 @@ export default function GalleryForm({ onSubmit, onCancel }: GalleryFormProps) {
     
     setErrors({})
     setLoading(true)
+    setUploadError('')
+    
     try {
-      await onSubmit(formData)
+      const formDataToSend = new FormData()
+      formDataToSend.append('image', imageFile)
+      
+      const res = await fetch('/api/gallery', { method: 'POST', body: formDataToSend })
+      const data = await res.json()
+      
+      if (!res.ok) {
+        setUploadError(data.error || 'Failed to save gallery image')
+        return
+      }
+      
+      await onSubmit(data)
       setFormData({ imageUrl: '' })
       setImagePreview('')
+      setImageFile(null)
+    } catch (error: any) {
+      setUploadError(error.message || 'Failed to save gallery image')
     } finally {
       setLoading(false)
     }
@@ -68,9 +80,9 @@ export default function GalleryForm({ onSubmit, onCancel }: GalleryFormProps) {
           type="file"
           accept="image/*"
           onChange={handleImageChange}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.imageUrl ? 'border-red-500' : ''}`}
+          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        {errors.imageUrl && <p className="text-red-500 text-sm mt-1">{errors.imageUrl}</p>}
+        {uploadError && <p className="text-red-500 text-sm mt-1">{uploadError}</p>}
         {imagePreview && (
           <div className="mt-2">
             <img
@@ -83,6 +95,8 @@ export default function GalleryForm({ onSubmit, onCancel }: GalleryFormProps) {
               onClick={() => {
                 setImagePreview('')
                 setFormData((prev) => ({ ...prev, imageUrl: '' }))
+                setUploadError('')
+                setImageFile(null)
               }}
               className="mt-2 text-sm text-red-600 hover:text-red-700"
             >

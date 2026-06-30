@@ -16,8 +16,6 @@ export interface Category {
 
 export async function getAll(): Promise<Category[]> {
   await connectDB();
-
-  console.log("dsb", mongoose.connection.db?.databaseName);
   const categories = await CategoryModel.find({}).sort({ createdAt: -1 });
   return categories.map((cat) => ({
     id: cat._id.toString(),

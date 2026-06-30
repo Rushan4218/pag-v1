@@ -90,11 +90,6 @@ export default function AdminPage() {
   }
 
   const handleCreateCategory = async (data: any) => {
-    await fetch('/api/categories', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
     setEditingCategory(null)
     fetchCategories()
   }
@@ -118,11 +113,6 @@ export default function AdminPage() {
   }
 
   const handleCreateProduct = async (data: any) => {
-    await fetch('/api/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
     setEditingProduct(null)
     fetchProducts()
   }
@@ -146,11 +136,6 @@ export default function AdminPage() {
   }
 
   const handleCreateGalleryImage = async (data: any) => {
-    await fetch('/api/gallery', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
     fetchGalleryImages()
   }
 
