@@ -1,64 +1,101 @@
-import { readJsonFile, writeJsonFile } from './utils'
-import { v4 as uuidv4 } from 'uuid'
+import connectDB from '@/lib/mongodb';
+import ProductModel from '@/lib/models/Product';
 
 export interface Product {
-  id: string
-  name: string
-  description: string
-  price: number
-  imageUrl: string
-  categoryId: string
-  createdAt: string
-  updatedAt: string
+  _id?: string;
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  categoryId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-const FILENAME = 'products.json'
-
 export async function getAll(): Promise<Product[]> {
-  return readJsonFile<Product>(FILENAME)
+  await connectDB();
+  const products = await ProductModel.find({}).sort({ createdAt: -1 });
+  return products.map((prod) => ({
+    id: prod._id.toString(),
+    name: prod.name,
+    description: prod.description,
+    price: prod.price,
+    imageUrl: prod.imageUrl,
+    categoryId: prod.categoryId,
+    createdAt: prod.createdAt.toISOString(),
+    updatedAt: prod.updatedAt.toISOString(),
+  }));
 }
 
 export async function getById(id: string): Promise<Product | null> {
-  const all = await getAll()
-  return all.find((prod) => prod.id === id) || null
+  await connectDB();
+  const product = await ProductModel.findById(id);
+  if (!product) return null;
+  return {
+    id: product._id.toString(),
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    imageUrl: product.imageUrl,
+    categoryId: product.categoryId,
+    createdAt: product.createdAt.toISOString(),
+    updatedAt: product.updatedAt.toISOString(),
+  };
 }
 
 export async function getByCategoryId(categoryId: string): Promise<Product[]> {
-  const all = await getAll()
-  return all.filter((prod) => prod.categoryId === categoryId)
+  await connectDB();
+  const products = await ProductModel.find({ categoryId }).sort({ createdAt: -1 });
+  return products.map((prod) => ({
+    id: prod._id.toString(),
+    name: prod.name,
+    description: prod.description,
+    price: prod.price,
+    imageUrl: prod.imageUrl,
+    categoryId: prod.categoryId,
+    createdAt: prod.createdAt.toISOString(),
+    updatedAt: prod.updatedAt.toISOString(),
+  }));
 }
 
-export async function create(data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> {
-  const all = await getAll()
-  const now = new Date().toISOString()
-  const product: Product = {
-    id: uuidv4(),
-    ...data,
-    createdAt: now,
-    updatedAt: now,
-  }
-  all.push(product)
-  await writeJsonFile(FILENAME, all)
-  return product
+export async function create(
+  data: Omit<Product, 'id' | 'createdAt' | 'updatedAt' | '_id'>,
+): Promise<Product> {
+  await connectDB();
+  const product = await ProductModel.create(data);
+  return {
+    id: product._id.toString(),
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    imageUrl: product.imageUrl,
+    categoryId: product.categoryId,
+    createdAt: product.createdAt.toISOString(),
+    updatedAt: product.updatedAt.toISOString(),
+  };
 }
 
-export async function update(id: string, data: Partial<Omit<Product, 'id' | 'createdAt'>>) {
-  const all = await getAll()
-  const index = all.findIndex((prod) => prod.id === id)
-  if (index === -1) throw new Error(`Product ${id} not found`)
-
-  const now = new Date().toISOString()
-  all[index] = {
-    ...all[index],
-    ...data,
-    updatedAt: now,
-  }
-  await writeJsonFile(FILENAME, all)
-  return all[index]
+export async function update(
+  id: string,
+  data: Partial<Omit<Product, 'id' | 'createdAt' | '_id'>>,
+): Promise<Product> {
+  await connectDB();
+  const product = await ProductModel.findByIdAndUpdate(id, data, { new: true });
+  if (!product) throw new Error(`Product ${id} not found`);
+  return {
+    id: product._id.toString(),
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    imageUrl: product.imageUrl,
+    categoryId: product.categoryId,
+    createdAt: product.createdAt.toISOString(),
+    updatedAt: product.updatedAt.toISOString(),
+  };
 }
 
 export async function deleteProduct(id: string) {
-  const all = await getAll()
-  const filtered = all.filter((prod) => prod.id !== id)
-  await writeJsonFile(FILENAME, filtered)
+  await connectDB();
+  await ProductModel.findByIdAndDelete(id);
 }

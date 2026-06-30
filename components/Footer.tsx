@@ -26,7 +26,10 @@ export default function Footer() {
           </div>
           <div>
             <h3 className="text-lg font-bold mb-4" style={{ color: '#e1e1e1' }}>Contact</h3>
-            <p style={{ color: '#b3b3b3' }}>Contact us via WhatsApp on product pages</p>
+            <p style={{ color: '#b3b3b3' }} className="mb-2">Contact us via WhatsApp on product pages</p>
+            <p style={{ color: '#b3b3b3' }}>
+              <span className="font-semibold">Phone:</span> +977 9861040603
+            </p>
           </div>
         </div>
         <div className="border-t mt-8 pt-8 text-center" style={{ borderColor: '#333333', color: '#b3b3b3' }}>

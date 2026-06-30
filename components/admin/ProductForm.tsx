@@ -21,12 +21,13 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
     categoryId: product?.categoryId || '',
     imageUrl: product?.imageUrl || '',
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const fetchCategories = async () => {
       const res = await fetch('/api/categories')
       const data = await res.json()
-      setCategories(data)
+      setCategories(Array.isArray(data) ? data : [])
     }
     fetchCategories()
   }, [])
@@ -56,6 +57,20 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const newErrors: Record<string, string> = {}
+    
+    if (!formData.name.trim()) newErrors.name = 'Name is required'
+    if (!formData.description.trim()) newErrors.description = 'Description is required'
+    if (!formData.price || formData.price <= 0) newErrors.price = 'Price must be greater than 0'
+    if (!formData.categoryId) newErrors.categoryId = 'Category is required'
+    if (!formData.imageUrl) newErrors.imageUrl = 'Image is required'
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
+    
+    setErrors({})
     setLoading(true)
     try {
       await onSubmit(formData)
@@ -72,43 +87,42 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
         <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
         <input
           type="text"
-          required
           value={formData.name}
           onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : ''}`}
         />
+        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
         <textarea
-          required
           value={formData.description}
           onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.description ? 'border-red-500' : ''}`}
           rows={3}
         />
+        {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
         <input
           type="number"
-          required
           step="0.01"
           value={formData.price}
-          onChange={(e) => setFormData((prev) => ({ ...prev, price: parseFloat(e.target.value) }))}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(e) => setFormData((prev) => ({ ...prev, price: parseFloat(e.target.value) || 0 }))}
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.price ? 'border-red-500' : ''}`}
         />
+        {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
       </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
         <select
-          required
           value={formData.categoryId}
           onChange={(e) => setFormData((prev) => ({ ...prev, categoryId: e.target.value }))}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.categoryId ? 'border-red-500' : ''}`}
         >
           <option value="">Select a category</option>
           {categories.map((cat) => (
@@ -117,6 +131,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
             </option>
           ))}
         </select>
+        {errors.categoryId && <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>}
       </div>
 
       <div>
@@ -125,8 +140,9 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
           type="file"
           accept="image/*"
           onChange={handleImageChange}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.imageUrl ? 'border-red-500' : ''}`}
         />
+        {errors.imageUrl && <p className="text-red-500 text-sm mt-1">{errors.imageUrl}</p>}
         {imagePreview && (
           <div className="mt-2">
             <img
@@ -134,6 +150,16 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
               alt="Preview"
               className="w-32 h-32 object-cover rounded-md"
             />
+            <button
+              type="button"
+              onClick={() => {
+                setImagePreview('')
+                setFormData((prev) => ({ ...prev, imageUrl: '' }))
+              }}
+              className="mt-2 text-sm text-red-600 hover:text-red-700"
+            >
+              Remove image
+            </button>
           </div>
         )}
       </div>

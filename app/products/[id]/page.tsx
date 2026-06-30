@@ -6,6 +6,7 @@ import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import { Product } from '@/lib/storage/product'
 import { Category } from '@/lib/storage/category'
+import { capitalize } from '@/lib/utils'
 
 interface ProductDetailPageProps {
   params: Promise<{ id: string }>
@@ -117,7 +118,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             {/* Details */}
             <div className="flex flex-col justify-start">
               <h1 className="text-5xl font-serif font-bold mb-4" style={{ color: '#040404' }}>
-                {product.name}
+                {capitalize(product.name)}
               </h1>
               
               {category && (
@@ -126,7 +127,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                   className="font-semibold mb-6 transition-colors"
                   style={{ color: '#040404' }}
                 >
-                  {category.name}
+                  {capitalize(category.name)}
                 </Link>
               )}
               

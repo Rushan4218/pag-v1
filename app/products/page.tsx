@@ -6,6 +6,7 @@ import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Category } from "@/lib/storage/category";
 import { Product } from "@/lib/storage/product";
+import { capitalize } from "@/lib/utils";
 
 export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -108,7 +109,7 @@ export default function ProductsPage() {
                         : "#d0d0d0",
                   }}
                 >
-                  {category.name}
+                  {capitalize(category.name)}
                 </button>
               ))}
             </div>
@@ -154,7 +155,7 @@ export default function ProductsPage() {
                           className="text-xl font-serif font-bold mb-3 transition-colors line-clamp-2"
                           style={{ color: "#040404" }}
                         >
-                          {product.name}
+                          {capitalize(product.name)}
                         </h3>
                         <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
                           {product.description}

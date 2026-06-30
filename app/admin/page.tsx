@@ -3,15 +3,18 @@
 import { useState, useEffect } from 'react'
 import CategoryForm from '@/components/admin/CategoryForm'
 import ProductForm from '@/components/admin/ProductForm'
+import GalleryForm from '@/components/admin/GalleryForm'
 import { Category } from '@/lib/storage/category'
 import { Product } from '@/lib/storage/product'
+import { GalleryImage } from '@/lib/storage/gallery'
 
-type Section = 'categories' | 'products'
+type Section = 'categories' | 'products' | 'gallery'
 
 export default function AdminPage() {
   const [section, setSection] = useState<Section>('categories')
   const [categories, setCategories] = useState<Category[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([])
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(false)
@@ -24,6 +27,9 @@ export default function AdminPage() {
     if (section === 'products') {
       fetchProducts()
     }
+    if (section === 'gallery') {
+      fetchGalleryImages()
+    }
   }, [section])
 
   const fetchCategories = async () => {
@@ -31,7 +37,15 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/categories')
       const data = await res.json()
-      setCategories(data)
+      if (!res.ok || data.error) {
+        console.error('Failed to fetch categories:', data.error)
+        setCategories([])
+      } else {
+        setCategories(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+      setCategories([])
     } finally {
       setLoading(false)
     }
@@ -42,7 +56,34 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/products')
       const data = await res.json()
-      setProducts(data)
+      if (!res.ok || data.error) {
+        console.error('Failed to fetch products:', data.error)
+        setProducts([])
+      } else {
+        setProducts(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error)
+      setProducts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchGalleryImages = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/gallery')
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        console.error('Failed to fetch gallery images:', data.error)
+        setGalleryImages([])
+      } else {
+        setGalleryImages(Array.isArray(data) ? data : [])
+      }
+    } catch (error) {
+      console.error('Error fetching gallery images:', error)
+      setGalleryImages([])
     } finally {
       setLoading(false)
     }
@@ -104,6 +145,22 @@ export default function AdminPage() {
     }
   }
 
+  const handleCreateGalleryImage = async (data: any) => {
+    await fetch('/api/gallery', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    fetchGalleryImages()
+  }
+
+  const handleDeleteGalleryImage = async (id: string) => {
+    if (confirm('Are you sure?')) {
+      await fetch(`/api/gallery/${id}`, { method: 'DELETE' })
+      fetchGalleryImages()
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -129,6 +186,16 @@ export default function AdminPage() {
             }`}
           >
             Products
+          </button>
+          <button
+            onClick={() => setSection('gallery')}
+            className={`px-4 py-2 rounded-md font-medium ${
+              section === 'gallery'
+                ? 'bg-blue-600 text-white'
+                : 'bg-white text-gray-800 border'
+            }`}
+          >
+            Gallery
           </button>
         </div>
 
@@ -238,6 +305,45 @@ export default function AdminPage() {
                             Delete
                           </button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {section === 'gallery' && (
+            <>
+              <div>
+                <h2 className="text-2xl font-bold mb-4">Add to Gallery</h2>
+                <GalleryForm
+                  onSubmit={handleCreateGalleryImage}
+                  onCancel={() => {}}
+                />
+              </div>
+
+              <div className="lg:col-span-2">
+                <h2 className="text-2xl font-bold mb-4">Gallery Images</h2>
+                {loading ? (
+                  <p>Loading...</p>
+                ) : galleryImages.length === 0 ? (
+                  <p className="text-gray-500">No images yet</p>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {galleryImages.map((image) => (
+                      <div key={image.id} className="relative group">
+                        <img
+                          src={image.imageUrl}
+                          alt="Gallery image"
+                          className="w-full h-48 object-cover rounded-lg"
+                        />
+                        <button
+                          onClick={() => handleDeleteGalleryImage(image.id)}
+                          className="absolute top-2 right-2 px-3 py-1 text-sm bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          Delete
+                        </button>
                       </div>
                     ))}
                   </div>

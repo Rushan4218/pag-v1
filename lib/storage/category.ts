@@ -1,7 +1,11 @@
-import { readJsonFile, writeJsonFile } from "./utils";
-import { v4 as uuidv4 } from "uuid";
+import connectDB from "@/lib/mongodb";
+import CategoryModel from "@/lib/models/Category";
+import mongoose from "mongoose";
+
+console.log("connection", mongoose.connection.name);
 
 export interface Category {
+  _id?: string;
   id: string;
   name: string;
   description: string;
@@ -10,53 +14,71 @@ export interface Category {
   updatedAt: string;
 }
 
-const FILENAME = "categories.json";
-
 export async function getAll(): Promise<Category[]> {
-  return readJsonFile<Category>(FILENAME);
+  await connectDB();
+
+  console.log("dsb", mongoose.connection.db?.databaseName);
+  const categories = await CategoryModel.find({}).sort({ createdAt: -1 });
+  return categories.map((cat) => ({
+    id: cat._id.toString(),
+    name: cat.name,
+    description: cat.description,
+    imageUrl: cat.imageUrl,
+    createdAt: cat.createdAt.toISOString(),
+    updatedAt: cat.updatedAt.toISOString(),
+  }));
 }
 
 export async function getById(id: string): Promise<Category | null> {
-  const all = await getAll();
-  return all.find((cat) => cat.id === id) || null;
+  await connectDB();
+  const category = await CategoryModel.findById(id);
+  if (!category) return null;
+  return {
+    id: category._id.toString(),
+    name: category.name,
+    description: category.description,
+    imageUrl: category.imageUrl,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
+  };
 }
 
 export async function create(
-  data: Omit<Category, "id" | "createdAt" | "updatedAt">,
+  data: Omit<Category, "id" | "createdAt" | "updatedAt" | "_id">,
 ): Promise<Category> {
-  const all = await getAll();
-  const now = new Date().toISOString();
-  const category: Category = {
-    id: uuidv4(),
-    ...data,
-    createdAt: now,
-    updatedAt: now,
+  await connectDB();
+
+  const category = await CategoryModel.create(data);
+  return {
+    id: category._id.toString(),
+    name: category.name,
+    description: category.description,
+    imageUrl: category.imageUrl,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
   };
-  all.push(category);
-  await writeJsonFile(FILENAME, all);
-  return category;
 }
 
 export async function update(
   id: string,
-  data: Partial<Omit<Category, "id" | "createdAt">>,
-) {
-  const all = await getAll();
-  const index = all.findIndex((cat) => cat.id === id);
-  if (index === -1) throw new Error(`Category ${id} not found`);
-
-  const now = new Date().toISOString();
-  all[index] = {
-    ...all[index],
-    ...data,
-    updatedAt: now,
+  data: Partial<Omit<Category, "id" | "createdAt" | "_id">>,
+): Promise<Category> {
+  await connectDB();
+  const category = await CategoryModel.findByIdAndUpdate(id, data, {
+    new: true,
+  });
+  if (!category) throw new Error(`Category ${id} not found`);
+  return {
+    id: category._id.toString(),
+    name: category.name,
+    description: category.description,
+    imageUrl: category.imageUrl,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
   };
-  await writeJsonFile(FILENAME, all);
-  return all[index];
 }
 
 export async function deleteCategory(id: string) {
-  const all = await getAll();
-  const filtered = all.filter((cat) => cat.id !== id);
-  await writeJsonFile(FILENAME, filtered);
+  await connectDB();
+  await CategoryModel.findByIdAndDelete(id);
 }

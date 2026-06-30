@@ -1,21 +1,17 @@
 'use client'
 
 import { useState } from 'react'
-import { Category } from '@/lib/storage/category'
 
-interface CategoryFormProps {
-  category?: Category
+interface GalleryFormProps {
   onSubmit: (data: any) => Promise<void>
   onCancel: () => void
 }
 
-export default function CategoryForm({ category, onSubmit, onCancel }: CategoryFormProps) {
+export default function GalleryForm({ onSubmit, onCancel }: GalleryFormProps) {
   const [loading, setLoading] = useState(false)
-  const [imagePreview, setImagePreview] = useState<string>(category?.imageUrl || '')
+  const [imagePreview, setImagePreview] = useState<string>('')
   const [formData, setFormData] = useState({
-    name: category?.name || '',
-    description: category?.description || '',
-    imageUrl: category?.imageUrl || '',
+    imageUrl: '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -46,8 +42,6 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
     e.preventDefault()
     const newErrors: Record<string, string> = {}
     
-    if (!formData.name.trim()) newErrors.name = 'Name is required'
-    if (!formData.description.trim()) newErrors.description = 'Description is required'
     if (!formData.imageUrl) newErrors.imageUrl = 'Image is required'
     
     if (Object.keys(newErrors).length > 0) {
@@ -59,7 +53,7 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
     setLoading(true)
     try {
       await onSubmit(formData)
-      setFormData({ name: '', description: '', imageUrl: '' })
+      setFormData({ imageUrl: '' })
       setImagePreview('')
     } finally {
       setLoading(false)
@@ -68,28 +62,6 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-lg border">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-        <input
-          type="text"
-          value={formData.name}
-          onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : ''}`}
-        />
-        {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-        <textarea
-          value={formData.description}
-          onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.description ? 'border-red-500' : ''}`}
-          rows={3}
-        />
-        {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
-      </div>
-
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
         <input
@@ -126,7 +98,7 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
           disabled={loading}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? 'Saving...' : category ? 'Update' : 'Create'}
+          {loading ? 'Uploading...' : 'Add to Gallery'}
         </button>
         <button
           type="button"

@@ -7,6 +7,7 @@ import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import { Category } from '@/lib/storage/category'
 import { Product } from '@/lib/storage/product'
+import { capitalize } from '@/lib/utils'
 
 function CategoriesContent() {
   const searchParams = useSearchParams()
@@ -88,7 +89,7 @@ function CategoriesContent() {
                         boxShadow: selectedCategory?.id === category.id ? '0 10px 15px -3px rgba(4, 4, 4, 0.2)' : 'none'
                       }}
                     >
-                      {category.name}
+                      {capitalize(category.name)}
                     </button>
                   ))}
                 </div>
@@ -110,7 +111,7 @@ function CategoriesContent() {
 
                     <div className="mb-12 pb-8 border-b" style={{ borderColor: '#d0d0d0' }}>
                       <h2 className="text-4xl font-serif font-bold mb-4" style={{ color: '#040404' }}>
-                        {selectedCategory.name}
+                        {capitalize(selectedCategory.name)}
                       </h2>
                       <p className="text-gray-700 text-lg leading-relaxed">{selectedCategory.description}</p>
                     </div>
@@ -140,7 +141,7 @@ function CategoriesContent() {
                               <div className="p-8 flex-1 flex flex-col justify-between">
                                 <div>
                                   <h4 className="text-xl font-serif font-bold mb-3 transition-colors line-clamp-2" style={{ color: '#040404' }}>
-                                    {product.name}
+                                    {capitalize(product.name)}
                                   </h4>
                                   <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
                                     {product.description}
