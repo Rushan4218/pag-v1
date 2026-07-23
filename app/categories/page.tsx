@@ -8,6 +8,7 @@ import Footer from '@/components/Footer'
 import { Category } from '@/lib/storage/category'
 import { Product } from '@/lib/storage/product'
 import { capitalize } from '@/lib/utils'
+import { fetchArray } from '@/lib/client-data'
 
 function CategoriesContent() {
   const searchParams = useSearchParams()
@@ -21,8 +22,7 @@ function CategoriesContent() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch('/api/categories')
-        const data = await res.json()
+        const data = await fetchArray<Category>('/api/categories')
         setCategories(data)
 
         if (categoryId) {
@@ -45,9 +45,7 @@ function CategoriesContent() {
     if (!selectedCategory) return
 
     const fetchProducts = async () => {
-      const res = await fetch(`/api/products?categoryId=${selectedCategory.id}`)
-      const data = await res.json()
-      setProducts(data)
+      setProducts(await fetchArray<Product>(`/api/products?categoryId=${selectedCategory.id}`))
     }
 
     fetchProducts()

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { FolderOpen, ImageIcon, Loader2, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import CategoryForm from '@/components/admin/CategoryForm'
 import ProductForm from '@/components/admin/ProductForm'
 import GalleryForm from '@/components/admin/GalleryForm'
@@ -10,6 +11,23 @@ import { GalleryImage } from '@/lib/storage/gallery'
 
 type Section = 'categories' | 'products' | 'gallery'
 
+const sections: Array<{ id: Section; label: string; icon: typeof FolderOpen }> = [
+  { id: 'categories', label: 'Categories', icon: FolderOpen },
+  { id: 'products', label: 'Products', icon: Plus },
+  { id: 'gallery', label: 'Gallery', icon: ImageIcon },
+]
+
+async function readApi<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, init)
+  const data = await res.json()
+
+  if (!res.ok || data?.error) {
+    throw new Error(data?.error || 'Request failed')
+  }
+
+  return data
+}
+
 export default function AdminPage() {
   const [section, setSection] = useState<Section>('categories')
   const [categories, setCategories] = useState<Category[]>([])
@@ -18,52 +36,58 @@ export default function AdminPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(false)
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+
+  const activeCount = useMemo(() => {
+    if (section === 'categories') return categories.length
+    if (section === 'products') return products.length
+    return galleryImages.length
+  }, [categories.length, galleryImages.length, products.length, section])
+
+  const categoryNameById = useMemo(() => {
+    return new Map(categories.map((category) => [category.id, category.name]))
+  }, [categories])
 
   useEffect(() => {
-    fetchCategories()
+    void fetchCategories()
   }, [])
 
   useEffect(() => {
+    setError('')
+    setEditingCategory(null)
+    setEditingProduct(null)
+
+    if (section === 'categories') {
+      void fetchCategories()
+    }
     if (section === 'products') {
-      fetchProducts()
+      void fetchProducts()
+      if (categories.length === 0) void fetchCategories(false)
     }
     if (section === 'gallery') {
-      fetchGalleryImages()
+      void fetchGalleryImages()
     }
   }, [section])
 
-  const fetchCategories = async () => {
-    setLoading(true)
+  const fetchCategories = async (showLoader = true) => {
+    if (showLoader) setLoading(true)
     try {
-      const res = await fetch('/api/categories')
-      const data = await res.json()
-      if (!res.ok || data.error) {
-        console.error('Failed to fetch categories:', data.error)
-        setCategories([])
-      } else {
-        setCategories(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Error fetching categories:', error)
+      setCategories(await readApi<Category[]>('/api/categories'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch categories')
       setCategories([])
     } finally {
-      setLoading(false)
+      if (showLoader) setLoading(false)
     }
   }
 
   const fetchProducts = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/products')
-      const data = await res.json()
-      if (!res.ok || data.error) {
-        console.error('Failed to fetch products:', data.error)
-        setProducts([])
-      } else {
-        setProducts(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error)
+      setProducts(await readApi<Product[]>('/api/products'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch products')
       setProducts([])
     } finally {
       setLoading(false)
@@ -73,271 +97,297 @@ export default function AdminPage() {
   const fetchGalleryImages = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/gallery')
-      const data = await res.json()
-      if (!res.ok || data.error) {
-        console.error('Failed to fetch gallery images:', data.error)
-        setGalleryImages([])
-      } else {
-        setGalleryImages(Array.isArray(data) ? data : [])
-      }
-    } catch (error) {
-      console.error('Error fetching gallery images:', error)
+      setGalleryImages(await readApi<GalleryImage[]>('/api/gallery'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch gallery images')
       setGalleryImages([])
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCreateCategory = async (data: any) => {
+  const refreshActiveSection = async () => {
+    setError('')
+    if (section === 'categories') await fetchCategories()
+    if (section === 'products') await fetchProducts()
+    if (section === 'gallery') await fetchGalleryImages()
+  }
+
+  const handleCategorySaved = async () => {
     setEditingCategory(null)
-    fetchCategories()
+    await fetchCategories()
   }
 
-  const handleUpdateCategory = async (data: any) => {
-    if (!editingCategory) return
-    await fetch(`/api/categories/${editingCategory.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    setEditingCategory(null)
-    fetchCategories()
-  }
-
-  const handleDeleteCategory = async (id: string) => {
-    if (confirm('Are you sure?')) {
-      await fetch(`/api/categories/${id}`, { method: 'DELETE' })
-      fetchCategories()
-    }
-  }
-
-  const handleCreateProduct = async (data: any) => {
+  const handleProductSaved = async () => {
     setEditingProduct(null)
-    fetchProducts()
+    await fetchProducts()
   }
 
-  const handleUpdateProduct = async (data: any) => {
-    if (!editingProduct) return
-    await fetch(`/api/products/${editingProduct.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    setEditingProduct(null)
-    fetchProducts()
+  const handleGalleryImageSaved = async () => {
+    await fetchGalleryImages()
   }
 
-  const handleDeleteProduct = async (id: string) => {
-    if (confirm('Are you sure?')) {
-      await fetch(`/api/products/${id}`, { method: 'DELETE' })
-      fetchProducts()
-    }
-  }
+  const deleteItem = async (url: string, id: string, refresh: () => Promise<void>) => {
+    if (!confirm('Delete this item permanently?')) return
 
-  const handleCreateGalleryImage = async (data: any) => {
-    fetchGalleryImages()
-  }
-
-  const handleDeleteGalleryImage = async (id: string) => {
-    if (confirm('Are you sure?')) {
-      await fetch(`/api/gallery/${id}`, { method: 'DELETE' })
-      fetchGalleryImages()
+    setActionLoadingId(id)
+    setError('')
+    try {
+      await readApi(url, { method: 'DELETE' })
+      await refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Admin Dashboard</h1>
+    <div className="min-h-screen bg-zinc-100">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500">Phenomenal Art Gallery</p>
+            <h1 className="mt-1 text-3xl font-bold text-zinc-950">Admin Dashboard</h1>
+          </div>
+          <button
+            onClick={refreshActiveSection}
+            disabled={loading}
+            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 bg-white px-3 text-sm font-medium text-zinc-800 transition hover:bg-zinc-100 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            Refresh
+          </button>
+        </header>
 
-        <div className="mb-6 flex gap-4">
-          <button
-            onClick={() => setSection('categories')}
-            className={`px-4 py-2 rounded-md font-medium ${
-              section === 'categories'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-800 border'
-            }`}
-          >
-            Categories
-          </button>
-          <button
-            onClick={() => setSection('products')}
-            className={`px-4 py-2 rounded-md font-medium ${
-              section === 'products'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-800 border'
-            }`}
-          >
-            Products
-          </button>
-          <button
-            onClick={() => setSection('gallery')}
-            className={`px-4 py-2 rounded-md font-medium ${
-              section === 'gallery'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-800 border'
-            }`}
-          >
-            Gallery
-          </button>
+        <div className="grid gap-4 md:grid-cols-3">
+          {sections.map((item) => {
+            const Icon = item.icon
+            const count =
+              item.id === 'categories'
+                ? categories.length
+                : item.id === 'products'
+                  ? products.length
+                  : galleryImages.length
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => setSection(item.id)}
+                className={`flex items-center justify-between rounded-lg border p-4 text-left transition ${
+                  section === item.id
+                    ? 'border-zinc-950 bg-zinc-950 text-white shadow-sm'
+                    : 'border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400'
+                }`}
+              >
+                <span className="flex items-center gap-3">
+                  <Icon className="size-5" />
+                  <span className="font-semibold">{item.label}</span>
+                </span>
+                <span className={`rounded-md px-2 py-1 text-sm ${section === item.id ? 'bg-white/15' : 'bg-zinc-100'}`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {section === 'categories' && (
-            <>
-              <div>
-                <h2 className="text-2xl font-bold mb-4">
-                  {editingCategory ? 'Edit Category' : 'Create Category'}
-                </h2>
-                <CategoryForm
-                  category={editingCategory || undefined}
-                  onSubmit={editingCategory ? handleUpdateCategory : handleCreateCategory}
-                  onCancel={() => setEditingCategory(null)}
-                />
-              </div>
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        )}
 
-              <div className="lg:col-span-2">
-                <h2 className="text-2xl font-bold mb-4">Categories List</h2>
-                {loading ? (
-                  <p>Loading...</p>
-                ) : categories.length === 0 ? (
-                  <p className="text-gray-500">No categories yet</p>
-                ) : (
-                  <div className="space-y-3">
+        <main className="grid grid-cols-1 gap-6 lg:grid-cols-[360px_1fr]">
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-zinc-950">
+                {section === 'categories' && (editingCategory ? 'Edit Category' : 'Create Category')}
+                {section === 'products' && (editingProduct ? 'Edit Product' : 'Create Product')}
+                {section === 'gallery' && 'Add Gallery Image'}
+              </h2>
+            </div>
+
+            {section === 'categories' && (
+              <CategoryForm
+                category={editingCategory || undefined}
+                onSubmit={handleCategorySaved}
+                onCancel={() => setEditingCategory(null)}
+              />
+            )}
+
+            {section === 'products' && (
+              <ProductForm
+                product={editingProduct || undefined}
+                onSubmit={handleProductSaved}
+                onCancel={() => setEditingProduct(null)}
+              />
+            )}
+
+            {section === 'gallery' && <GalleryForm onSubmit={handleGalleryImageSaved} onCancel={() => {}} />}
+          </aside>
+
+          <section className="rounded-lg border border-zinc-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-zinc-200 px-5 py-4">
+              <div>
+                <h2 className="text-xl font-bold text-zinc-950">
+                  {section === 'categories' && 'Categories'}
+                  {section === 'products' && 'Products'}
+                  {section === 'gallery' && 'Gallery'}
+                </h2>
+                <p className="text-sm text-zinc-500">{activeCount} items</p>
+              </div>
+              {loading && <Loader2 className="size-5 animate-spin text-zinc-500" />}
+            </div>
+
+            <div className="p-5">
+              {section === 'categories' && (
+                <ListState
+                  loading={loading}
+                  empty={categories.length === 0}
+                  emptyText="No categories yet"
+                >
+                  <div className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200">
                     {categories.map((category) => (
-                      <div key={category.id} className="flex gap-4 items-center p-4 bg-white rounded-lg border">
-                        {category.imageUrl && (
-                          <img
-                            src={category.imageUrl}
-                            alt={category.name}
-                            className="w-16 h-16 object-cover rounded"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{category.name}</h3>
-                          <p className="text-sm text-gray-600">{category.description}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditingCategory(category)}
-                            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCategory(category.id)}
-                            className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {section === 'products' && (
-            <>
-              <div>
-                <h2 className="text-2xl font-bold mb-4">
-                  {editingProduct ? 'Edit Product' : 'Create Product'}
-                </h2>
-                <ProductForm
-                  product={editingProduct || undefined}
-                  onSubmit={editingProduct ? handleUpdateProduct : handleCreateProduct}
-                  onCancel={() => setEditingProduct(null)}
-                />
-              </div>
-
-              <div className="lg:col-span-2">
-                <h2 className="text-2xl font-bold mb-4">Products List</h2>
-                {loading ? (
-                  <p>Loading...</p>
-                ) : products.length === 0 ? (
-                  <p className="text-gray-500">No products yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {products.map((product) => (
-                      <div key={product.id} className="flex gap-4 items-center p-4 bg-white rounded-lg border">
-                        {product.imageUrl && (
-                          <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            className="w-16 h-16 object-cover rounded"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{product.name}</h3>
-                          <p className="text-sm text-gray-600">{product.description}</p>
-                          <p className="text-sm font-bold text-blue-600">${product.price}</p>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => setEditingProduct(product)}
-                            className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {section === 'gallery' && (
-            <>
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Add to Gallery</h2>
-                <GalleryForm
-                  onSubmit={handleCreateGalleryImage}
-                  onCancel={() => {}}
-                />
-              </div>
-
-              <div className="lg:col-span-2">
-                <h2 className="text-2xl font-bold mb-4">Gallery Images</h2>
-                {loading ? (
-                  <p>Loading...</p>
-                ) : galleryImages.length === 0 ? (
-                  <p className="text-gray-500">No images yet</p>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {galleryImages.map((image) => (
-                      <div key={image.id} className="relative group">
+                      <div key={category.id} className="flex flex-col gap-4 bg-white p-4 sm:flex-row sm:items-center">
                         <img
-                          src={image.imageUrl}
-                          alt="Gallery image"
-                          className="w-full h-48 object-cover rounded-lg"
+                          src={category.imageUrl}
+                          alt={category.name}
+                          className="h-20 w-full rounded-md object-cover sm:w-24"
                         />
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold text-zinc-950">{category.name}</h3>
+                          <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{category.description}</p>
+                        </div>
+                        <RowActions
+                          loading={actionLoadingId === category.id}
+                          onEdit={() => setEditingCategory(category)}
+                          onDelete={() => deleteItem(`/api/categories/${category.id}`, category.id, fetchCategories)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </ListState>
+              )}
+
+              {section === 'products' && (
+                <ListState loading={loading} empty={products.length === 0} emptyText="No products yet">
+                  <div className="divide-y divide-zinc-200 overflow-hidden rounded-lg border border-zinc-200">
+                    {products.map((product) => (
+                      <div key={product.id} className="flex flex-col gap-4 bg-white p-4 sm:flex-row sm:items-center">
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="h-20 w-full rounded-md object-cover sm:w-24"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-zinc-950">{product.name}</h3>
+                            <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600">
+                              {categoryNameById.get(product.categoryId) || 'Uncategorized'}
+                            </span>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-sm text-zinc-600">{product.description}</p>
+                          <p className="mt-2 text-sm font-bold text-zinc-950">Rs. {product.price}</p>
+                        </div>
+                        <RowActions
+                          loading={actionLoadingId === product.id}
+                          onEdit={() => setEditingProduct(product)}
+                          onDelete={() => deleteItem(`/api/products/${product.id}`, product.id, fetchProducts)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </ListState>
+              )}
+
+              {section === 'gallery' && (
+                <ListState loading={loading} empty={galleryImages.length === 0} emptyText="No images yet">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {galleryImages.map((image) => (
+                      <div key={image.id} className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
+                        <img src={image.imageUrl} alt="Gallery image" className="h-56 w-full object-cover" />
                         <button
-                          onClick={() => handleDeleteGalleryImage(image.id)}
-                          className="absolute top-2 right-2 px-3 py-1 text-sm bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => deleteItem(`/api/gallery/${image.id}`, image.id, fetchGalleryImages)}
+                          disabled={actionLoadingId === image.id}
+                          className="absolute right-3 top-3 inline-flex size-8 items-center justify-center rounded-md bg-white text-red-600 shadow-sm transition hover:bg-red-50 disabled:opacity-50 sm:opacity-0 sm:group-hover:opacity-100"
+                          aria-label="Delete image"
+                          title="Delete image"
                         >
-                          Delete
+                          {actionLoadingId === image.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
                         </button>
                       </div>
                     ))}
                   </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+                </ListState>
+              )}
+            </div>
+          </section>
+        </main>
       </div>
+    </div>
+  )
+}
+
+function ListState({
+  loading,
+  empty,
+  emptyText,
+  children,
+}: {
+  loading: boolean
+  empty: boolean
+  emptyText: string
+  children: React.ReactNode
+}) {
+  if (loading) {
+    return (
+      <div className="flex min-h-44 items-center justify-center text-sm font-medium text-zinc-500">
+        <Loader2 className="mr-2 size-4 animate-spin" />
+        Loading...
+      </div>
+    )
+  }
+
+  if (empty) {
+    return (
+      <div className="flex min-h-44 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-sm font-medium text-zinc-500">
+        {emptyText}
+      </div>
+    )
+  }
+
+  return children
+}
+
+function RowActions({
+  loading,
+  onEdit,
+  onDelete,
+}: {
+  loading: boolean
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  return (
+    <div className="flex shrink-0 gap-2">
+      <button
+        onClick={onEdit}
+        className="inline-flex size-8 items-center justify-center rounded-md border border-zinc-300 bg-white text-zinc-700 transition hover:bg-zinc-100"
+        aria-label="Edit item"
+        title="Edit item"
+      >
+        <Pencil className="size-4" />
+      </button>
+      <button
+        onClick={onDelete}
+        disabled={loading}
+        className="inline-flex size-8 items-center justify-center rounded-md bg-red-50 text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+        aria-label="Delete item"
+        title="Delete item"
+      >
+        {loading ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+      </button>
     </div>
   )
 }

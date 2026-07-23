@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { GalleryImage } from "@/lib/storage/gallery";
+import { fetchArray } from "@/lib/client-data";
 
 export default function GalleryPage() {
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -12,9 +13,7 @@ export default function GalleryPage() {
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const res = await fetch("/api/gallery");
-        const data = await res.json();
-        setImages(data);
+        setImages(await fetchArray<GalleryImage>("/api/gallery"));
       } finally {
         setLoading(false);
       }

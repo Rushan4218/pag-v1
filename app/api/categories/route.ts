@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    if (!(imageFile instanceof File) || imageFile.size === 0) {
+      return NextResponse.json(
+        { error: "Image is required" },
+        { status: 400 }
+      );
+    }
     
     let imageUrl = "";
     

@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import { Category } from "@/lib/storage/category";
 import { Product } from "@/lib/storage/product";
 import { capitalize } from "@/lib/utils";
+import { fetchArray } from "@/lib/client-data";
 
 export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -17,9 +18,7 @@ export default function ProductsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const categoriesRes = await fetch("/api/categories");
-        const categoriesData = await categoriesRes.json();
-        setCategories(categoriesData);
+        setCategories(await fetchArray<Category>("/api/categories"));
       } finally {
         setLoading(false);
       }
@@ -32,9 +31,7 @@ export default function ProductsPage() {
       const url = selectedCategory
         ? `/api/products?categoryId=${selectedCategory}`
         : "/api/products";
-      const res = await fetch(url);
-      const data = await res.json();
-      setProducts(data);
+      setProducts(await fetchArray<Product>(url));
     };
     fetchProducts();
   }, [selectedCategory]);

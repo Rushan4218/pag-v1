@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { ImagePlus, Loader2, RotateCcw, Save, X } from 'lucide-react'
 import { Category } from '@/lib/storage/category'
 
 interface CategoryFormProps {
@@ -20,6 +21,20 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [uploadError, setUploadError] = useState<string>('')
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setFormData({
+      name: category?.name || '',
+      description: category?.description || '',
+      imageUrl: category?.imageUrl || '',
+    })
+    setImagePreview(category?.imageUrl || '')
+    setImageFile(null)
+    setErrors({})
+    setUploadError('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [category])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -41,6 +56,7 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
     
     if (!formData.name.trim()) newErrors.name = 'Name is required'
     if (!formData.description.trim()) newErrors.description = 'Description is required'
+    if (!category && !imageFile) newErrors.image = 'Image is required'
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
@@ -59,7 +75,10 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
         formDataToSend.append('image', imageFile)
       }
       
-      const res = await fetch('/api/categories', { method: 'POST', body: formDataToSend })
+      const res = await fetch(category ? `/api/categories/${category.id}` : '/api/categories', {
+        method: category ? 'PUT' : 'POST',
+        body: formDataToSend,
+      })
       const data = await res.json()
       
       if (!res.ok) {
@@ -68,9 +87,12 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
       }
       
       await onSubmit(data)
-      setFormData({ name: '', description: '', imageUrl: '' })
-      setImagePreview('')
-      setImageFile(null)
+      if (!category) {
+        setFormData({ name: '', description: '', imageUrl: '' })
+        setImagePreview('')
+        setImageFile(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      }
     } catch (error: any) {
       setUploadError(error.message || 'Failed to save category')
     } finally {
@@ -79,74 +101,80 @@ export default function CategoryForm({ category, onSubmit, onCancel }: CategoryF
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4 p-4 bg-white rounded-lg border">
+    <form onSubmit={handleSubmit} noValidate className="space-y-5 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <label className="block text-sm font-medium text-zinc-800 mb-1.5">Name</label>
         <input
           type="text"
           value={formData.name}
           onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.name ? 'border-red-500' : ''}`}
+          className={`w-full rounded-md border px-3 py-2 text-sm outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 ${errors.name ? 'border-red-500' : 'border-zinc-300'}`}
         />
         {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+        <label className="block text-sm font-medium text-zinc-800 mb-1.5">Description</label>
         <textarea
           value={formData.description}
           onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-          className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.description ? 'border-red-500' : ''}`}
+          className={`w-full rounded-md border px-3 py-2 text-sm outline-none transition focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 ${errors.description ? 'border-red-500' : 'border-zinc-300'}`}
           rows={3}
         />
         {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
+        <label className="block text-sm font-medium text-zinc-800 mb-1.5">Image</label>
         <input
+          ref={fileInputRef}
           type="file"
           accept="image/*"
           onChange={handleImageChange}
-          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`w-full rounded-md border px-3 py-2 text-sm outline-none transition file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-white focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 ${errors.image ? 'border-red-500' : 'border-zinc-300'}`}
         />
+        {errors.image && <p className="text-red-500 text-sm mt-1">{errors.image}</p>}
         {uploadError && <p className="text-red-500 text-sm mt-1">{uploadError}</p>}
         {imagePreview && (
-          <div className="mt-2">
+          <div className="mt-3 overflow-hidden rounded-md border border-zinc-200 bg-zinc-50 p-2">
             <img
               src={imagePreview}
               alt="Preview"
-              className="w-32 h-32 object-cover rounded-md"
+              className="h-36 w-full object-cover rounded"
             />
             <button
               type="button"
               onClick={() => {
-                setImagePreview('')
-                setFormData((prev) => ({ ...prev, imageUrl: '' }))
+                setImagePreview(category?.imageUrl || '')
+                setFormData((prev) => ({ ...prev, imageUrl: category?.imageUrl || '' }))
                 setUploadError('')
                 setImageFile(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
               }}
-              className="mt-2 text-sm text-red-600 hover:text-red-700"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-zinc-700 hover:text-zinc-950"
             >
-              Remove image
+              <RotateCcw className="size-3.5" />
+              Reset image
             </button>
           </div>
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 pt-1">
         <button
           type="submit"
           disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          className="inline-flex h-9 items-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
         >
+          {loading ? <Loader2 className="size-4 animate-spin" /> : category ? <Save className="size-4" /> : <ImagePlus className="size-4" />}
           {loading ? 'Saving...' : category ? 'Update' : 'Create'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+          className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 bg-white px-4 text-sm font-medium text-zinc-800 transition hover:bg-zinc-100"
         >
+          <X className="size-4" />
           Cancel
         </button>
       </div>

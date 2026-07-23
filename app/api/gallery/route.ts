@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const imageFile = formData.get('image') as File | null
     
     // Validate image is provided
-    if (!imageFile) {
+    if (!(imageFile instanceof File) || imageFile.size === 0) {
       return NextResponse.json(
         { error: 'Image is required' },
         { status: 400 }

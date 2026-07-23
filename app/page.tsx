@@ -9,6 +9,7 @@ import { Product } from "@/lib/storage/product";
 import { GalleryImage } from "@/lib/storage/gallery";
 import { capitalize } from "@/lib/utils";
 import Image from "next/image";
+import { fetchArray } from "@/lib/client-data";
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -19,15 +20,11 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [categoriesRes, productsRes, galleryRes] = await Promise.all([
-          fetch("/api/categories"),
-          fetch("/api/products"),
-          fetch("/api/gallery"),
+        const [categoriesData, productsData, galleryData] = await Promise.all([
+          fetchArray<Category>("/api/categories"),
+          fetchArray<Product>("/api/products"),
+          fetchArray<GalleryImage>("/api/gallery"),
         ]);
-
-        const categoriesData = await categoriesRes.json();
-        const productsData = await productsRes.json();
-        const galleryData = await galleryRes.json();
 
         setCategories(categoriesData.slice(0, 3));
         setProducts(productsData.slice(0, 6));
