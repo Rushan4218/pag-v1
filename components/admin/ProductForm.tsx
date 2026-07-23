@@ -96,7 +96,7 @@ export default function ProductForm({ product, onSubmit, onCancel }: ProductForm
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-lg border">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4 p-4 bg-white rounded-lg border">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
         <input
