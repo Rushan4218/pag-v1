@@ -56,7 +56,7 @@ export default function GalleryPage() {
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {images.map((image) => (
+              {images.map((image, index) => (
                 <div
                   key={image.id}
                   className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border"
@@ -65,7 +65,7 @@ export default function GalleryPage() {
                   <div className="relative overflow-hidden h-80">
                     <img
                       src={image.imageUrl}
-                      alt="Gallery image"
+                      alt={`Thangka gallery artwork ${index + 1}`}
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                     />
                   </div>

@@ -315,7 +315,7 @@ export default function Home() {
             </p>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {galleryImages.map((image) => (
+              {galleryImages.map((image, index) => (
                 <Link
                   key={image.id}
                   href="/gallery"
@@ -325,7 +325,7 @@ export default function Home() {
                     <div className="relative overflow-hidden h-48">
                       <img
                         src={image.imageUrl}
-                        alt="Gallery image"
+                        alt={`Featured Thangka gallery artwork ${index + 1}`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     </div>
